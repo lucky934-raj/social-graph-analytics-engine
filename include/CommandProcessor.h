@@ -5,6 +5,7 @@
 #include <iosfwd>
 #include <sstream>
 #include <string>
+#include <vector>
 
 // Text command interface on top of SocialGraph. Reads from / writes to any
 // stream, so the same code serves the interactive CLI, script files and tests.
@@ -22,6 +23,7 @@ public:
 private:
     void dispatch(const std::string& command, std::istringstream& args, std::ostream& out);
     std::string label(int id) const;
+    void printUsers(const std::vector<int>& ids, std::ostream& out) const;
 
     SocialGraph graph_;
 };

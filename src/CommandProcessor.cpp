@@ -1,5 +1,7 @@
 #include "CommandProcessor.h"
 
+#include "GraphAlgorithms.h"
+
 #include <algorithm>
 #include <cctype>
 #include <iostream>
@@ -62,6 +64,7 @@ const char* kHelpText =
     "  REMOVE_FRIEND <a> <b>         remove a friendship\n"
     "  ARE_FRIENDS <a> <b>           check whether two users are friends\n"
     "  FRIENDS <id>                  list a user's friends\n"
+    "  MUTUAL <a> <b>                list friends shared by two users\n"
     "  HELP                          show this message\n"
     "  EXIT                          quit\n";
 
@@ -167,10 +170,15 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
         }
         std::sort(friends.begin(), friends.end());
         out << "Friends of " << label(id) << " (" << friends.size() << "):";
-        for (int f : friends) {
-            out << ' ' << label(f);
-        }
-        out << '\n';
+        printUsers(friends, out);
+    } else if (command == "MUTUAL") {
+        int a = readInt(args, "first user id");
+        int b = readInt(args, "second user id");
+        expectNoMoreArgs(args);
+        std::vector<int> mutual = GraphAlgorithms::mutualFriends(graph_, a, b);
+        out << "Mutual friends of " << label(a) << " and " << label(b) << " (" << mutual.size()
+            << "):";
+        printUsers(mutual, out);
     } else if (command == "HELP") {
         out << kHelpText;
     } else {
@@ -184,4 +192,11 @@ std::string CommandProcessor::label(int id) const {
         return std::to_string(id);
     }
     return user->name + "(" + std::to_string(id) + ")";
+}
+
+void CommandProcessor::printUsers(const std::vector<int>& ids, std::ostream& out) const {
+    for (int id : ids) {
+        out << ' ' << label(id);
+    }
+    out << '\n';
 }
