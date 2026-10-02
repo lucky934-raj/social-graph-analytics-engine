@@ -133,6 +133,34 @@ TEST_CASE(cli_dijkstra) {
     CHECK(contains(runCommand(cli, "ADD_FRIEND 2 3 -4"), "Error: friendship weight must be positive"));
 }
 
+TEST_CASE(cli_connectivity_and_stats) {
+    CommandProcessor cli;
+    runCommand(cli, "ADD_USER 1 Alice");
+    runCommand(cli, "ADD_USER 2 Bob");
+    runCommand(cli, "ADD_USER 3 Charlie");
+    runCommand(cli, "ADD_FRIEND 1 2");
+    CHECK(contains(runCommand(cli, "CONNECTED 1 2"), "Yes"));
+    CHECK(contains(runCommand(cli, "CONNECTED 1 3"), "No"));
+
+    std::string comps = runCommand(cli, "COMPONENTS");
+    CHECK(contains(comps, "2 connected component(s)"));
+    CHECK(contains(comps, "#1 (2 user(s)): Alice(1) Bob(2)"));
+    CHECK(contains(comps, "#2 (1 user(s)): Charlie(3)"));
+
+    // The cached snapshot must be rebuilt after the graph changes.
+    runCommand(cli, "ADD_FRIEND 2 3");
+    CHECK(contains(runCommand(cli, "CONNECTED 1 3"), "Yes"));
+    runCommand(cli, "REMOVE_FRIEND 1 2");
+    CHECK(contains(runCommand(cli, "CONNECTED 1 3"), "No"));
+
+    std::string stats = runCommand(cli, "STATS");
+    CHECK(contains(stats, "Users:              3"));
+    CHECK(contains(stats, "Friendships:        1"));
+    CHECK(contains(stats, "Average degree:     0.67"));
+    CHECK(contains(stats, "Components:         2"));
+    CHECK(contains(runCommand(cli, "CONNECTED 1 9"), "Error: user 9 does not exist"));
+}
+
 TEST_CASE(cli_exit_comments_and_blank_lines) {
     CommandProcessor cli;
     std::ostringstream out;

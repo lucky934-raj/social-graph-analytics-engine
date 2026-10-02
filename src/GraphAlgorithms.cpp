@@ -1,5 +1,7 @@
 #include "GraphAlgorithms.h"
 
+#include "Connectivity.h"
+
 #include <algorithm>
 #include <functional>
 #include <queue>
@@ -227,6 +229,29 @@ PathResult dijkstra(const SocialGraph& graph, int source, int target) {
     result.distance = it->second;
     result.path = walkBack(parent, source, target);
     return result;
+}
+
+GraphStats computeStats(const SocialGraph& graph) {
+    GraphStats stats;
+    stats.users = graph.userCount();
+    stats.friendships = graph.friendshipCount();
+    if (stats.users == 0) {
+        return stats;
+    }
+    // Every friendship adds one to the degree of both users.
+    stats.averageDegree =
+        2.0 * static_cast<double>(stats.friendships) / static_cast<double>(stats.users);
+    for (int id : graph.userIds()) {
+        std::size_t d = graph.degree(id);
+        stats.maxDegree = std::max(stats.maxDegree, d);
+        if (d == 0) {
+            ++stats.isolatedUsers;
+        }
+    }
+    Connectivity connectivity(graph);
+    stats.components = connectivity.componentCount();
+    stats.largestComponent = connectivity.largestComponentSize();
+    return stats;
 }
 
 }  // namespace GraphAlgorithms

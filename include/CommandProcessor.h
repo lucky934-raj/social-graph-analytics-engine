@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Connectivity.h"
 #include "GraphAlgorithms.h"
 #include "SocialGraph.h"
 
 #include <iosfwd>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -23,10 +25,15 @@ public:
 
 private:
     void dispatch(const std::string& command, std::istringstream& args, std::ostream& out);
+    // Returns a connectivity snapshot of the current graph, rebuilding it only
+    // if the graph changed since the last call.
+    Connectivity& connectivity();
+
     std::string label(int id) const;
     void printUsers(const std::vector<int>& ids, std::ostream& out) const;
     void printPath(const PathResult& result, int source, int target, const std::string& metric,
                    std::ostream& out) const;
 
     SocialGraph graph_;
+    std::optional<Connectivity> connectivity_;
 };

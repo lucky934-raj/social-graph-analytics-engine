@@ -80,6 +80,9 @@ const char* kHelpText =
     "  BFS <a> <b>                   shortest path by number of hops (BFS)\n"
     "  BIDIR_BFS <a> <b>             same, using bidirectional BFS\n"
     "  DIJKSTRA <a> <b>              minimum total-weight path (Dijkstra)\n"
+    "  CONNECTED <a> <b>             are two users in the same component? (DSU)\n"
+    "  COMPONENTS                    list connected components (DSU)\n"
+    "  STATS                         graph statistics\n"
     "  HELP                          show this message\n"
     "  EXIT                          quit\n";
 
@@ -239,11 +242,41 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
         expectNoMoreArgs(args);
         printPath(GraphAlgorithms::dijkstra(graph_, source, target), source, target, "Cost",
                   out);
+    } else if (command == "CONNECTED") {
+        int a = readInt(args, "first user id");
+        int b = readInt(args, "second user id");
+        expectNoMoreArgs(args);
+        out << (connectivity().connected(a, b) ? "Yes" : "No") << '\n';
+    } else if (command == "COMPONENTS") {
+        expectNoMoreArgs(args);
+        auto components = connectivity().components();
+        out << components.size() << " connected component(s)\n";
+        for (std::size_t i = 0; i < components.size(); ++i) {
+            out << "  #" << i + 1 << " (" << components[i].size() << " user(s)):";
+            printUsers(components[i], out);
+        }
+    } else if (command == "STATS") {
+        expectNoMoreArgs(args);
+        GraphStats stats = GraphAlgorithms::computeStats(graph_);
+        out << "Users:              " << stats.users << '\n'
+            << "Friendships:        " << stats.friendships << '\n'
+            << "Average degree:     " << formatDecimal(stats.averageDegree, 2) << '\n'
+            << "Max degree:         " << stats.maxDegree << '\n'
+            << "Isolated users:     " << stats.isolatedUsers << '\n'
+            << "Components:         " << stats.components << '\n'
+            << "Largest component:  " << stats.largestComponent << '\n';
     } else if (command == "HELP") {
         out << kHelpText;
     } else {
         throw std::invalid_argument("unknown command '" + command + "' (type HELP)");
     }
+}
+
+Connectivity& CommandProcessor::connectivity() {
+    if (!connectivity_ || connectivity_->graphVersion() != graph_.version()) {
+        connectivity_.emplace(graph_);
+    }
+    return *connectivity_;
 }
 
 std::string CommandProcessor::label(int id) const {

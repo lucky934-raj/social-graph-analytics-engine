@@ -3,6 +3,7 @@
 #include "User.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -38,6 +39,10 @@ public:
     std::size_t friendshipCount() const { return edgeCount_; }
     std::vector<int> userIds() const;  // sorted ascending
 
+    // Incremented on every change to the graph. Lets callers that cache
+    // derived data (e.g. a connectivity snapshot) tell when it is stale.
+    std::uint64_t version() const { return version_; }
+
 private:
     struct Node {
         User user;
@@ -51,4 +56,5 @@ private:
     // can never exist without an adjacency list (or the other way round).
     std::unordered_map<int, Node> nodes_;
     std::size_t edgeCount_ = 0;
+    std::uint64_t version_ = 0;
 };

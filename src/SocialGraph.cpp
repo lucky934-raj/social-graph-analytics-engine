@@ -11,6 +11,7 @@ bool SocialGraph::addUser(int id, const std::string& name) {
         return false;
     }
     nodes_.emplace(id, Node{User{id, name}, {}});
+    ++version_;
     return true;
 }
 
@@ -26,6 +27,7 @@ bool SocialGraph::removeUser(int id) {
     }
     edgeCount_ -= it->second.friends.size();
     nodes_.erase(it);
+    ++version_;
     return true;
 }
 
@@ -53,6 +55,7 @@ bool SocialGraph::addFriendship(int a, int b, int weight) {
     first.friends[b] = weight;
     second.friends[a] = weight;
     ++edgeCount_;
+    ++version_;
     return true;
 }
 
@@ -64,6 +67,7 @@ bool SocialGraph::removeFriendship(int a, int b) {
     }
     second.friends.erase(a);
     --edgeCount_;
+    ++version_;
     return true;
 }
 

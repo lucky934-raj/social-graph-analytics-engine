@@ -23,6 +23,8 @@ add_library(graph_core STATIC
     src/SocialGraph.cpp
     src/GraphAlgorithms.cpp
     src/RecommendationEngine.cpp
+    src/DisjointSetUnion.cpp
+    src/Connectivity.cpp
     src/CommandProcessor.cpp
 )
 target_include_directories(graph_core PUBLIC include)
@@ -36,6 +38,7 @@ add_executable(unit_tests
     tests/test_social_graph.cpp
     tests/test_algorithms.cpp
     tests/test_recommendations.cpp
+    tests/test_connectivity.cpp
     tests/test_cli.cpp
 )
 target_link_libraries(unit_tests PRIVATE graph_core)
