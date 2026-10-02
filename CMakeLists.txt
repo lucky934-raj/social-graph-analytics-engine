@@ -34,6 +34,10 @@ target_include_directories(graph_core PUBLIC include)
 add_executable(social_graph src/main.cpp)
 target_link_libraries(social_graph PRIVATE graph_core)
 
+# Not part of the test suite; run it manually (see README).
+add_executable(bfs_benchmark bench/bfs_benchmark.cpp)
+target_link_libraries(bfs_benchmark PRIVATE graph_core)
+
 enable_testing()
 add_executable(unit_tests
     tests/test_main.cpp
