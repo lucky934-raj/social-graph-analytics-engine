@@ -3,6 +3,7 @@
 #include "TestGraphs.h"
 
 #include <random>
+#include <climits>
 #include <vector>
 
 namespace {
@@ -19,6 +20,15 @@ bool isValidPath(const SocialGraph& g, const std::vector<int>& path, int source,
         }
     }
     return true;
+}
+
+// Sum of edge weights along a path (assumes the path is valid).
+long long pathCost(const SocialGraph& g, const std::vector<int>& path) {
+    long long cost = 0;
+    for (std::size_t i = 0; i + 1 < path.size(); ++i) {
+        cost += g.neighbors(path[i]).at(path[i + 1]);
+    }
+    return cost;
 }
 
 }  // namespace
@@ -211,4 +221,114 @@ TEST_CASE(bidir_matches_bfs_on_random_graphs) {
     }
     CHECK(pairsChecked > 10000);
     CHECK(mismatches == 0);
+}
+
+// ---------- Dijkstra ----------
+
+TEST_CASE(dijkstra_prefers_cheaper_path_with_more_hops) {
+    // Direct edge 1-2 costs 10; going through 3 costs 1 + 1.
+    SocialGraph g = makeGraph(3, {});
+    g.addFriendship(1, 2, 10);
+    g.addFriendship(1, 3, 1);
+    g.addFriendship(3, 2, 1);
+    PathResult r = GraphAlgorithms::dijkstra(g, 1, 2);
+    std::vector<int> expected{1, 3, 2};
+    CHECK(r.found && r.distance == 2 && r.path == expected);
+
+    // BFS on the same graph counts hops and takes the direct edge.
+    CHECK(GraphAlgorithms::bfsShortestPath(g, 1, 2).distance == 1);
+}
+
+TEST_CASE(dijkstra_updates_distance_after_first_discovery) {
+    // 4 is first reached via 2 with cost 50, later improved to 3 via 3-5.
+    // Exercises the stale-heap-entry skip.
+    SocialGraph g = makeGraph(5, {});
+    g.addFriendship(1, 2, 1);
+    g.addFriendship(2, 4, 49);
+    g.addFriendship(1, 3, 1);
+    g.addFriendship(3, 5, 1);
+    g.addFriendship(5, 4, 1);
+    PathResult r = GraphAlgorithms::dijkstra(g, 1, 4);
+    std::vector<int> expected{1, 3, 5, 4};
+    CHECK(r.distance == 3 && r.path == expected);
+}
+
+TEST_CASE(dijkstra_same_user_unreachable_and_unknown) {
+    SocialGraph g = makeGraph(4, {{1, 2}, {3, 4}});
+    PathResult self = GraphAlgorithms::dijkstra(g, 1, 1);
+    std::vector<int> justOne{1};
+    CHECK(self.found && self.distance == 0 && self.path == justOne);
+
+    PathResult none = GraphAlgorithms::dijkstra(g, 1, 4);
+    CHECK(!none.found && none.distance == -1 && none.path.empty());
+
+    CHECK_THROWS(GraphAlgorithms::dijkstra(g, 1, 77));
+}
+
+TEST_CASE(dijkstra_large_weights_do_not_overflow) {
+    // Each weight fits in an int, but the total does not.
+    SocialGraph g = makeGraph(4, {});
+    g.addFriendship(1, 2, INT_MAX);
+    g.addFriendship(2, 3, INT_MAX);
+    g.addFriendship(3, 4, INT_MAX);
+    PathResult r = GraphAlgorithms::dijkstra(g, 1, 4);
+    CHECK(r.found && r.distance == 3LL * INT_MAX);
+}
+
+TEST_CASE(dijkstra_matches_floyd_warshall_on_random_weighted_graphs) {
+    std::mt19937 rng(777);
+    const long long kInf = LLONG_MAX / 4;
+    int mismatches = 0;
+    for (int round = 0; round < 200; ++round) {
+        int n = 2 + static_cast<int>(rng() % 20);
+        int edgeChance = 5 + static_cast<int>(rng() % 40);
+        SocialGraph g = makeGraph(n, {});
+        // Floyd-Warshall reference, 1-indexed.
+        std::vector<std::vector<long long>> ref(n + 1, std::vector<long long>(n + 1, kInf));
+        for (int v = 1; v <= n; ++v) {
+            ref[v][v] = 0;
+        }
+        for (int a = 1; a <= n; ++a) {
+            for (int b = a + 1; b <= n; ++b) {
+                if (static_cast<int>(rng() % 100) < edgeChance) {
+                    int w = 1 + static_cast<int>(rng() % 20);
+                    g.addFriendship(a, b, w);
+                    ref[a][b] = ref[b][a] = w;
+                }
+            }
+        }
+        for (int k = 1; k <= n; ++k) {
+            for (int i = 1; i <= n; ++i) {
+                for (int j = 1; j <= n; ++j) {
+                    if (ref[i][k] + ref[k][j] < ref[i][j]) {
+                        ref[i][j] = ref[i][k] + ref[k][j];
+                    }
+                }
+            }
+        }
+        for (int s = 1; s <= n; ++s) {
+            for (int t = 1; t <= n; ++t) {
+                PathResult r = GraphAlgorithms::dijkstra(g, s, t);
+                bool ok;
+                if (ref[s][t] == kInf) {
+                    ok = !r.found;
+                } else {
+                    ok = r.found && r.distance == ref[s][t] && isValidPath(g, r.path, s, t) &&
+                         pathCost(g, r.path) == r.distance;
+                }
+                if (!ok) {
+                    ++mismatches;
+                }
+            }
+        }
+    }
+    CHECK(mismatches == 0);
+}
+
+TEST_CASE(dijkstra_with_unit_weights_matches_bfs_distance) {
+    SocialGraph g = makeGraph(8, {{1, 2}, {2, 3}, {3, 8}, {1, 4}, {4, 5}, {5, 6}, {6, 7}, {7, 8}});
+    for (int t = 1; t <= 8; ++t) {
+        CHECK(GraphAlgorithms::dijkstra(g, 1, t).distance ==
+              GraphAlgorithms::bfsShortestPath(g, 1, t).distance);
+    }
 }

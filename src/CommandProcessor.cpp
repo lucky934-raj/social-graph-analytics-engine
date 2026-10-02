@@ -79,6 +79,7 @@ const char* kHelpText =
     "  JACCARD <a> <b>               Jaccard similarity of two users' friend sets\n"
     "  BFS <a> <b>                   shortest path by number of hops (BFS)\n"
     "  BIDIR_BFS <a> <b>             same, using bidirectional BFS\n"
+    "  DIJKSTRA <a> <b>              minimum total-weight path (Dijkstra)\n"
     "  HELP                          show this message\n"
     "  EXIT                          quit\n";
 
@@ -232,6 +233,12 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
         expectNoMoreArgs(args);
         printPath(GraphAlgorithms::bidirectionalBfs(graph_, source, target), source, target,
                   "Distance", out);
+    } else if (command == "DIJKSTRA") {
+        int source = readInt(args, "source id");
+        int target = readInt(args, "target id");
+        expectNoMoreArgs(args);
+        printPath(GraphAlgorithms::dijkstra(graph_, source, target), source, target, "Cost",
+                  out);
     } else if (command == "HELP") {
         out << kHelpText;
     } else {

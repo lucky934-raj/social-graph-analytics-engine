@@ -1,6 +1,7 @@
 #include "GraphAlgorithms.h"
 
 #include <algorithm>
+#include <functional>
 #include <queue>
 #include <stdexcept>
 #include <string>
@@ -174,6 +175,57 @@ PathResult bidirectionalBfs(const SocialGraph& graph, int source, int target) {
     }
     result.found = true;
     result.distance = static_cast<long long>(result.path.size()) - 1;
+    return result;
+}
+
+PathResult dijkstra(const SocialGraph& graph, int source, int target) {
+    requireUser(graph, source);
+    requireUser(graph, target);
+
+    // (distance, vertex); std::greater turns the default max-heap into a min-heap.
+    using HeapEntry = std::pair<long long, int>;
+    std::priority_queue<HeapEntry, std::vector<HeapEntry>, std::greater<HeapEntry>> heap;
+    std::unordered_map<int, long long> dist;
+    std::unordered_map<int, int> parent;
+
+    dist[source] = 0;
+    parent[source] = source;
+    heap.push({0, source});
+
+    PathResult result;
+    while (!heap.empty()) {
+        auto [d, current] = heap.top();
+        heap.pop();
+        // std::priority_queue has no decrease-key, so a vertex is pushed again
+        // whenever its distance improves. Older entries are stale; skip them.
+        if (d > dist.at(current)) {
+            continue;
+        }
+        ++result.expanded;
+        // With non-negative weights a vertex's distance is final once it is
+        // popped, so we can stop as soon as the target comes off the heap.
+        if (current == target) {
+            break;
+        }
+        for (const auto& edge : graph.neighbors(current)) {
+            int next = edge.first;
+            long long candidate = d + edge.second;
+            auto it = dist.find(next);
+            if (it == dist.end() || candidate < it->second) {
+                dist[next] = candidate;
+                parent[next] = current;
+                heap.push({candidate, next});
+            }
+        }
+    }
+
+    auto it = dist.find(target);
+    if (it == dist.end()) {
+        return result;
+    }
+    result.found = true;
+    result.distance = it->second;
+    result.path = walkBack(parent, source, target);
     return result;
 }
 

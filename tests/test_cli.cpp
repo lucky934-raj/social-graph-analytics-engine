@@ -119,6 +119,20 @@ TEST_CASE(cli_bfs) {
     CHECK(contains(runCommand(cli, "BIDIR_BFS 4 1"), "No path"));
 }
 
+TEST_CASE(cli_dijkstra) {
+    CommandProcessor cli;
+    runCommand(cli, "ADD_USER 1 Alice");
+    runCommand(cli, "ADD_USER 2 Bob");
+    runCommand(cli, "ADD_USER 3 Charlie");
+    runCommand(cli, "ADD_FRIEND 1 2 10");
+    runCommand(cli, "ADD_FRIEND 1 3 2");
+    runCommand(cli, "ADD_FRIEND 3 2 3");
+    std::string out = runCommand(cli, "DIJKSTRA 1 2");
+    CHECK(contains(out, "Cost: 5"));
+    CHECK(contains(out, "Path: Alice(1) -> Charlie(3) -> Bob(2)"));
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 2 3 -4"), "Error: friendship weight must be positive"));
+}
+
 TEST_CASE(cli_exit_comments_and_blank_lines) {
     CommandProcessor cli;
     std::ostringstream out;

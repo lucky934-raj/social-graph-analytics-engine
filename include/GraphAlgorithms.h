@@ -33,4 +33,10 @@ PathResult bfsShortestPath(const SocialGraph& graph, int source, int target);
 // instead of b^d. Throws if either user does not exist.
 PathResult bidirectionalBfs(const SocialGraph& graph, int source, int target);
 
+// Minimum total-weight path using Dijkstra's algorithm with a binary heap
+// (std::priority_queue). Correct because SocialGraph only stores positive
+// weights. O((V + E) log V) time, O(V + E) space for the heap in the worst
+// case. Throws if either user does not exist.
+PathResult dijkstra(const SocialGraph& graph, int source, int target);
+
 }  // namespace GraphAlgorithms
