@@ -2,6 +2,7 @@
 #include "TestFramework.h"
 #include "TestGraphs.h"
 
+#include <random>
 #include <vector>
 
 namespace {
@@ -118,4 +119,96 @@ TEST_CASE(bfs_unknown_user_throws) {
     SocialGraph g = makeGraph(2, {{1, 2}});
     CHECK_THROWS(GraphAlgorithms::bfsShortestPath(g, 1, 9));
     CHECK_THROWS(GraphAlgorithms::bfsShortestPath(g, 9, 1));
+}
+
+// ---------- bidirectional BFS ----------
+
+TEST_CASE(bidir_simple_chain_even_and_odd_lengths) {
+    SocialGraph g = makeGraph(5, {{1, 2}, {2, 3}, {3, 4}, {4, 5}});
+    std::vector<int> odd{1, 2, 3, 4};
+    std::vector<int> even{1, 2, 3, 4, 5};
+    PathResult r3 = GraphAlgorithms::bidirectionalBfs(g, 1, 4);
+    PathResult r4 = GraphAlgorithms::bidirectionalBfs(g, 1, 5);
+    CHECK(r3.found && r3.distance == 3 && r3.path == odd);
+    CHECK(r4.found && r4.distance == 4 && r4.path == even);
+}
+
+TEST_CASE(bidir_prefers_fewer_hops) {
+    SocialGraph g = makeGraph(6, {{1, 2}, {2, 3}, {3, 4}, {4, 5}, {1, 6}, {6, 5}});
+    PathResult r = GraphAlgorithms::bidirectionalBfs(g, 1, 5);
+    std::vector<int> expected{1, 6, 5};
+    CHECK(r.distance == 2 && r.path == expected);
+}
+
+TEST_CASE(bidir_direct_friends_and_same_user) {
+    SocialGraph g = makeGraph(2, {{1, 2}});
+    PathResult direct = GraphAlgorithms::bidirectionalBfs(g, 1, 2);
+    std::vector<int> expected{1, 2};
+    CHECK(direct.found && direct.distance == 1 && direct.path == expected);
+
+    PathResult self = GraphAlgorithms::bidirectionalBfs(g, 2, 2);
+    std::vector<int> justOne{2};
+    CHECK(self.found && self.distance == 0 && self.path == justOne);
+}
+
+TEST_CASE(bidir_unreachable_and_unknown) {
+    SocialGraph g = makeGraph(5, {{1, 2}, {2, 3}, {4, 5}});
+    PathResult r = GraphAlgorithms::bidirectionalBfs(g, 1, 5);
+    CHECK(!r.found && r.distance == -1 && r.path.empty());
+    CHECK(!GraphAlgorithms::bidirectionalBfs(g, 5, 1).found);
+    CHECK_THROWS(GraphAlgorithms::bidirectionalBfs(g, 1, 99));
+}
+
+TEST_CASE(bidir_hub_with_unbalanced_frontiers) {
+    // Source 1 is a hub with many friends; target 20 sits at the end of a
+    // chain. The search should keep expanding the small (chain) side.
+    SocialGraph g = makeGraph(20, {});
+    for (int leaf = 2; leaf <= 15; ++leaf) {
+        g.addFriendship(1, leaf);
+    }
+    g.addFriendship(15, 16);
+    g.addFriendship(16, 17);
+    g.addFriendship(17, 20);
+    PathResult r = GraphAlgorithms::bidirectionalBfs(g, 1, 20);
+    std::vector<int> expected{1, 15, 16, 17, 20};
+    CHECK(r.distance == 4 && r.path == expected);
+}
+
+TEST_CASE(bidir_matches_bfs_on_random_graphs) {
+    // Compares against plain BFS for every pair of users in a few hundred
+    // random graphs of different densities. Both algorithms may pick different
+    // paths when several are shortest, so we compare distances and check that
+    // each path is valid and has the right length.
+    std::mt19937 rng(12345);
+    int mismatches = 0;
+    int pairsChecked = 0;
+    for (int round = 0; round < 300; ++round) {
+        int n = 2 + static_cast<int>(rng() % 30);
+        int edgeChance = 3 + static_cast<int>(rng() % 30);  // percent
+        SocialGraph g = makeGraph(n, {});
+        for (int a = 1; a <= n; ++a) {
+            for (int b = a + 1; b <= n; ++b) {
+                if (static_cast<int>(rng() % 100) < edgeChance) {
+                    g.addFriendship(a, b);
+                }
+            }
+        }
+        for (int s = 1; s <= n; ++s) {
+            for (int t = 1; t <= n; ++t) {
+                PathResult plain = GraphAlgorithms::bfsShortestPath(g, s, t);
+                PathResult bidir = GraphAlgorithms::bidirectionalBfs(g, s, t);
+                ++pairsChecked;
+                bool ok = plain.found == bidir.found && plain.distance == bidir.distance;
+                if (ok && bidir.found) {
+                    ok = isValidPath(g, bidir.path, s, t) &&
+                         bidir.path.size() == static_cast<std::size_t>(bidir.distance) + 1;
+                }
+                if (!ok) {
+                    ++mismatches;
+                }
+            }
+        }
+    }
+    CHECK(pairsChecked > 10000);
+    CHECK(mismatches == 0);
 }

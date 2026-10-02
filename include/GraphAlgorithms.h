@@ -26,4 +26,11 @@ std::vector<int> mutualFriends(const SocialGraph& graph, int a, int b);
 // O(V + E) time, O(V) extra space. Throws if either user does not exist.
 PathResult bfsShortestPath(const SocialGraph& graph, int source, int target);
 
+// Same result as bfsShortestPath, but searches from both ends at once and
+// stops when the two searches meet. Each round expands one whole level of the
+// side with the smaller frontier. Worst case is still O(V + E), but with
+// branching factor b and distance d it explores roughly 2 * b^(d/2) vertices
+// instead of b^d. Throws if either user does not exist.
+PathResult bidirectionalBfs(const SocialGraph& graph, int source, int target);
+
 }  // namespace GraphAlgorithms

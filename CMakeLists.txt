@@ -40,3 +40,6 @@ add_executable(unit_tests
 )
 target_link_libraries(unit_tests PRIVATE graph_core)
 add_test(NAME unit_tests COMMAND unit_tests)
+# A bug such as a missing visited check makes a search loop forever; fail
+# instead of hanging.
+set_tests_properties(unit_tests PROPERTIES TIMEOUT 60)

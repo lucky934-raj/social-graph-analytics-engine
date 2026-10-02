@@ -78,6 +78,7 @@ const char* kHelpText =
     "  RECOMMEND <id> [k]            top-k friend suggestions by Jaccard similarity (k=5)\n"
     "  JACCARD <a> <b>               Jaccard similarity of two users' friend sets\n"
     "  BFS <a> <b>                   shortest path by number of hops (BFS)\n"
+    "  BIDIR_BFS <a> <b>             same, using bidirectional BFS\n"
     "  HELP                          show this message\n"
     "  EXIT                          quit\n";
 
@@ -225,6 +226,12 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
         expectNoMoreArgs(args);
         printPath(GraphAlgorithms::bfsShortestPath(graph_, source, target), source, target,
                   "Distance", out);
+    } else if (command == "BIDIR_BFS") {
+        int source = readInt(args, "source id");
+        int target = readInt(args, "target id");
+        expectNoMoreArgs(args);
+        printPath(GraphAlgorithms::bidirectionalBfs(graph_, source, target), source, target,
+                  "Distance", out);
     } else if (command == "HELP") {
         out << kHelpText;
     } else {
@@ -257,5 +264,5 @@ void CommandProcessor::printPath(const PathResult& result, int source, int targe
     for (std::size_t i = 0; i < result.path.size(); ++i) {
         out << (i == 0 ? " " : " -> ") << label(result.path[i]);
     }
-    out << '\n';
+    out << "\nVertices expanded: " << result.expanded << '\n';
 }

@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 namespace GraphAlgorithms {
 
@@ -88,6 +89,91 @@ PathResult bfsShortestPath(const SocialGraph& graph, int source, int target) {
             frontier.push(next);
         }
     }
+    return result;
+}
+
+namespace {
+
+// State of one direction of the bidirectional search.
+struct SearchSide {
+    std::unordered_map<int, int> parent;  // also the visited set
+    std::vector<int> frontier;            // vertices at the deepest level so far
+
+    explicit SearchSide(int start) : parent{{start, start}}, frontier{start} {}
+};
+
+// Expands every vertex in side.frontier by one level. Returns a vertex that
+// is now reached by both searches, or -1 if the searches have not met yet.
+//
+// Why the first meeting is a shortest path: before this call, `side` has
+// reached everything within distance D1 of its start and `other` everything
+// within D2 of its start, with no vertex in common, so the shortest path has
+// length L > D1 + D2. A meeting vertex v found now is D1 + 1 steps from this
+// side's start and at most D2 from the other's, giving a path of length
+// <= D1 + 1 + D2 <= L. No path is shorter than L, so it must equal L.
+int expandLevel(const SocialGraph& graph, SearchSide& side, const SearchSide& other,
+                std::size_t& expanded) {
+    std::vector<int> nextFrontier;
+    for (int current : side.frontier) {
+        ++expanded;
+        for (const auto& edge : graph.neighbors(current)) {
+            int next = edge.first;
+            if (side.parent.count(next) != 0) {
+                continue;
+            }
+            side.parent[next] = current;
+            if (other.parent.count(next) != 0) {
+                return next;
+            }
+            nextFrontier.push_back(next);
+        }
+    }
+    side.frontier = std::move(nextFrontier);
+    return -1;
+}
+
+}  // namespace
+
+PathResult bidirectionalBfs(const SocialGraph& graph, int source, int target) {
+    requireUser(graph, source);
+    requireUser(graph, target);
+
+    PathResult result;
+    if (source == target) {
+        result.found = true;
+        result.distance = 0;
+        result.path = {source};
+        return result;
+    }
+
+    SearchSide forward(source);
+    SearchSide backward(target);
+    int meeting = -1;
+
+    // If either frontier runs empty, that side has explored its whole
+    // component without meeting the other, so no path exists.
+    while (meeting == -1 && !forward.frontier.empty() && !backward.frontier.empty()) {
+        // Expanding the smaller frontier keeps the two search trees balanced,
+        // which is where the b^(d/2) saving comes from.
+        if (forward.frontier.size() <= backward.frontier.size()) {
+            meeting = expandLevel(graph, forward, backward, result.expanded);
+        } else {
+            meeting = expandLevel(graph, backward, forward, result.expanded);
+        }
+    }
+    if (meeting == -1) {
+        return result;
+    }
+
+    // source ... meeting from the forward tree, then meeting ... target by
+    // following the backward tree's parent links (they point towards target).
+    result.path = walkBack(forward.parent, source, meeting);
+    for (int v = meeting; v != target;) {
+        v = backward.parent.at(v);
+        result.path.push_back(v);
+    }
+    result.found = true;
+    result.distance = static_cast<long long>(result.path.size()) - 1;
     return result;
 }
 

@@ -112,6 +112,11 @@ TEST_CASE(cli_bfs) {
     CHECK(contains(out, "Path: Alice(1) -> Bob(2) -> Charlie(3)"));
     CHECK(contains(runCommand(cli, "BFS 1 4"), "No path from Alice(1) to Dave(4)"));
     CHECK(contains(runCommand(cli, "BFS 1 5"), "Error: user 5 does not exist"));
+
+    std::string bidir = runCommand(cli, "BIDIR_BFS 3 1");
+    CHECK(contains(bidir, "Distance: 2"));
+    CHECK(contains(bidir, "Path: Charlie(3) -> Bob(2) -> Alice(1)"));
+    CHECK(contains(runCommand(cli, "BIDIR_BFS 4 1"), "No path"));
 }
 
 TEST_CASE(cli_exit_comments_and_blank_lines) {
