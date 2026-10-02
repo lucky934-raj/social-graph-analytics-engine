@@ -42,6 +42,7 @@ add_executable(unit_tests
     tests/test_recommendations.cpp
     tests/test_connectivity.cpp
     tests/test_storage.cpp
+    tests/test_edge_cases.cpp
     tests/test_cli.cpp
 )
 target_link_libraries(unit_tests PRIVATE graph_core)
