@@ -1,0 +1,27 @@
+# Build output
+build/
+cmake-build-*/
+out/
+Testing/
+compile_commands.json
+CMakeUserPresets.json
+
+# Compiled objects and binaries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.dSYM/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
