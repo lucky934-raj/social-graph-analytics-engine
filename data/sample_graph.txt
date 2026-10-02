@@ -1,0 +1,34 @@
+# Small example network used by the demo script and the tests.
+# Weights are an abstract "connection cost": lower means closer.
+#
+# Users 1-10 form one connected group, 11-12 a second one, 13 has no friends.
+
+USER 1 Aarav
+USER 2 Priya
+USER 3 Rohan
+USER 4 Ananya
+USER 5 Vikram
+USER 6 Meera
+USER 7 Kabir
+USER 8 Isha
+USER 9 Arjun
+USER 10 Diya
+USER 11 Neel
+USER 12 Sara
+USER 13 Tara
+
+FRIEND 1 2 1
+FRIEND 1 3 2
+FRIEND 2 3 1
+FRIEND 2 4 3
+FRIEND 3 5 1
+FRIEND 4 5 2
+FRIEND 4 6 1
+FRIEND 5 7 4
+FRIEND 6 7 1
+FRIEND 6 8 2
+FRIEND 7 9 1
+FRIEND 8 9 5
+FRIEND 8 10 1
+FRIEND 9 10 2
+FRIEND 11 12 1

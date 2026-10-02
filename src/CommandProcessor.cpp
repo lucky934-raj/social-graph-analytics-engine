@@ -1,54 +1,24 @@
 #include "CommandProcessor.h"
 
 #include "GraphAlgorithms.h"
+#include "GraphStorage.h"
 #include "RecommendationEngine.h"
+#include "TextParsing.h"
 
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace {
 
-int readInt(std::istringstream& args, const std::string& what) {
-    std::string token;
-    if (!(args >> token)) {
-        throw std::invalid_argument("missing " + what);
-    }
-    std::size_t used = 0;
-    int value = 0;
-    try {
-        value = std::stoi(token, &used);
-    } catch (const std::exception&) {
-        used = 0;
-    }
-    if (used == 0 || used != token.size()) {
-        throw std::invalid_argument("expected an integer for " + what + ", got '" + token + "'");
-    }
-    return value;
-}
-
-bool hasMoreArgs(std::istringstream& args) {
-    args >> std::ws;
-    return !args.eof();
-}
-
-void expectNoMoreArgs(std::istringstream& args) {
-    if (hasMoreArgs(args)) {
-        throw std::invalid_argument("too many arguments");
-    }
-}
-
-std::string readRestOfLine(std::istringstream& args) {
-    std::string rest;
-    std::getline(args >> std::ws, rest);
-    while (!rest.empty() && std::isspace(static_cast<unsigned char>(rest.back()))) {
-        rest.pop_back();
-    }
-    return rest;
-}
+using TextParsing::expectNoMoreArgs;
+using TextParsing::hasMoreArgs;
+using TextParsing::readInt;
+using TextParsing::readRestOfLine;
 
 // Formats with a fixed number of decimals without changing the state of the
 // caller's output stream (std::fixed / setprecision are sticky).
@@ -83,6 +53,8 @@ const char* kHelpText =
     "  CONNECTED <a> <b>             are two users in the same component? (DSU)\n"
     "  COMPONENTS                    list connected components (DSU)\n"
     "  STATS                         graph statistics\n"
+    "  SAVE <file>                   write the graph to a text file\n"
+    "  LOAD <file>                   replace the graph with one read from a file\n"
     "  HELP                          show this message\n"
     "  EXIT                          quit\n";
 
@@ -265,6 +237,28 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
             << "Isolated users:     " << stats.isolatedUsers << '\n'
             << "Components:         " << stats.components << '\n'
             << "Largest component:  " << stats.largestComponent << '\n';
+    } else if (command == "SAVE") {
+        std::string path = readRestOfLine(args);
+        if (path.empty()) {
+            throw std::invalid_argument("missing file path");
+        }
+        GraphStorage::saveToFile(graph_, path);
+        out << "Saved " << graph_.userCount() << " users and " << graph_.friendshipCount()
+            << " friendships to " << path << '\n';
+    } else if (command == "LOAD") {
+        std::string path = readRestOfLine(args);
+        if (path.empty()) {
+            throw std::invalid_argument("missing file path");
+        }
+        // Parse into a separate graph first; if the file is invalid the
+        // current graph is left untouched.
+        SocialGraph loaded = GraphStorage::loadFromFile(path);
+        graph_ = std::move(loaded);
+        // The new graph has its own version counter, which could happen to
+        // match the cached snapshot's, so drop the cache explicitly.
+        connectivity_.reset();
+        out << "Loaded " << graph_.userCount() << " users and " << graph_.friendshipCount()
+            << " friendships from " << path << '\n';
     } else if (command == "HELP") {
         out << kHelpText;
     } else {

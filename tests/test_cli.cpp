@@ -1,6 +1,9 @@
 #include "CommandProcessor.h"
 #include "TestFramework.h"
 
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <sstream>
 #include <string>
 
@@ -159,6 +162,39 @@ TEST_CASE(cli_connectivity_and_stats) {
     CHECK(contains(stats, "Average degree:     0.67"));
     CHECK(contains(stats, "Components:         2"));
     CHECK(contains(runCommand(cli, "CONNECTED 1 9"), "Error: user 9 does not exist"));
+}
+
+TEST_CASE(cli_save_and_load) {
+    std::string dir = std::filesystem::temp_directory_path().string();
+    std::string good = dir + "/sgae_cli_good.txt";
+    std::string bad = dir + "/sgae_cli_bad.txt";
+
+    CommandProcessor writer;
+    runCommand(writer, "ADD_USER 1 Alice");
+    runCommand(writer, "ADD_USER 2 Bob");
+    runCommand(writer, "ADD_FRIEND 1 2 3");
+    CHECK(contains(runCommand(writer, "SAVE " + good), "Saved 2 users and 1 friendships"));
+
+    CommandProcessor reader;
+    runCommand(reader, "ADD_USER 9 Zed");
+    CHECK(contains(runCommand(reader, "CONNECTED 9 9"), "Yes"));  // builds a cached snapshot
+    CHECK(contains(runCommand(reader, "LOAD " + good), "Loaded 2 users and 1 friendships"));
+    CHECK(!reader.graph().userExists(9));
+    CHECK(reader.graph().neighbors(1).at(2) == 3);
+    CHECK(contains(runCommand(reader, "CONNECTED 1 2"), "Yes"));  // snapshot was rebuilt
+
+    // A broken file must leave the current graph unchanged.
+    {
+        std::ofstream f(bad);
+        f << "USER 1 Alice\nFRIEND 1 5\n";
+    }
+    CHECK(contains(runCommand(reader, "LOAD " + bad), "Error: line 2: user 5 does not exist"));
+    CHECK(reader.graph().userCount() == 2 && reader.graph().areFriends(1, 2));
+
+    CHECK(contains(runCommand(reader, "LOAD"), "Error: missing file path"));
+    CHECK(contains(runCommand(reader, "LOAD " + dir + "/no_such_file.txt"), "Error: cannot open"));
+    std::remove(good.c_str());
+    std::remove(bad.c_str());
 }
 
 TEST_CASE(cli_exit_comments_and_blank_lines) {

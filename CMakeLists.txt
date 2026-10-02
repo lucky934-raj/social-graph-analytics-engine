@@ -25,6 +25,8 @@ add_library(graph_core STATIC
     src/RecommendationEngine.cpp
     src/DisjointSetUnion.cpp
     src/Connectivity.cpp
+    src/GraphStorage.cpp
+    src/TextParsing.cpp
     src/CommandProcessor.cpp
 )
 target_include_directories(graph_core PUBLIC include)
@@ -39,9 +41,13 @@ add_executable(unit_tests
     tests/test_algorithms.cpp
     tests/test_recommendations.cpp
     tests/test_connectivity.cpp
+    tests/test_storage.cpp
     tests/test_cli.cpp
 )
 target_link_libraries(unit_tests PRIVATE graph_core)
+# Lets the tests check that the shipped sample data still loads.
+target_compile_definitions(unit_tests PRIVATE
+    SAMPLE_GRAPH_PATH="${CMAKE_CURRENT_SOURCE_DIR}/data/sample_graph.txt")
 add_test(NAME unit_tests COMMAND unit_tests)
 # A bug such as a missing visited check makes a search loop forever; fail
 # instead of hanging.

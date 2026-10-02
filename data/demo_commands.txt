@@ -1,0 +1,30 @@
+# Demo of every command. Run from the repository root:
+#   ./build/social_graph data/demo_commands.txt
+
+LOAD data/sample_graph.txt
+STATS
+
+FRIENDS 2
+MUTUAL 1 4
+JACCARD 1 5
+RECOMMEND 1 3
+
+BFS 1 10
+BIDIR_BFS 1 10
+DIJKSTRA 1 10
+
+CONNECTED 1 10
+CONNECTED 1 11
+COMPONENTS
+
+# Removing a friendship can disconnect parts of the graph.
+REMOVE_FRIEND 11 12
+CONNECTED 11 12
+COMPONENTS
+
+# Error handling
+ADD_FRIEND 1 1
+ADD_FRIEND 1 99
+ADD_FRIEND 1 2
+ADD_FRIEND 1 4 -2
+EXIT
