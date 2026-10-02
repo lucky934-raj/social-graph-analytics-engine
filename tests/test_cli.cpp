@@ -1,0 +1,92 @@
+#include "CommandProcessor.h"
+#include "TestFramework.h"
+
+#include <sstream>
+#include <string>
+
+namespace {
+
+// Runs a single command and returns what it printed.
+std::string runCommand(CommandProcessor& cli, const std::string& line) {
+    std::ostringstream out;
+    cli.execute(line, out);
+    return out.str();
+}
+
+bool contains(const std::string& text, const std::string& part) {
+    return text.find(part) != std::string::npos;
+}
+
+}  // namespace
+
+TEST_CASE(cli_adds_users_with_multi_word_names) {
+    CommandProcessor cli;
+    CHECK(contains(runCommand(cli, "ADD_USER 1 Mary Jane Watson"), "Added user Mary Jane Watson(1)"));
+    CHECK(cli.graph().findUser(1)->name == "Mary Jane Watson");
+    CHECK(contains(runCommand(cli, "ADD_USER 1 Bob"), "already exists"));
+}
+
+TEST_CASE(cli_commands_are_case_insensitive) {
+    CommandProcessor cli;
+    runCommand(cli, "add_user 1 Alice");
+    runCommand(cli, "Add_User 2 Bob");
+    runCommand(cli, "add_friend 1 2");
+    CHECK(cli.graph().areFriends(1, 2));
+}
+
+TEST_CASE(cli_friendship_commands) {
+    CommandProcessor cli;
+    runCommand(cli, "ADD_USER 1 Alice");
+    runCommand(cli, "ADD_USER 2 Bob");
+    runCommand(cli, "ADD_USER 3 Charlie");
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 1 2"), "Added friendship Alice(1) - Bob(2)"));
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 1 3 5"), "(weight 5)"));
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 2 1"), "already friends"));
+    CHECK(contains(runCommand(cli, "ARE_FRIENDS 2 1"), "Yes"));
+    CHECK(contains(runCommand(cli, "ARE_FRIENDS 2 3"), "No"));
+    CHECK(contains(runCommand(cli, "FRIENDS 1"), "Friends of Alice(1) (2): Bob(2) Charlie(3)"));
+    CHECK(contains(runCommand(cli, "REMOVE_FRIEND 1 2"), "Removed friendship"));
+    CHECK(contains(runCommand(cli, "REMOVE_FRIEND 1 2"), "are not friends"));
+}
+
+TEST_CASE(cli_reports_errors_without_crashing) {
+    CommandProcessor cli;
+    runCommand(cli, "ADD_USER 1 Alice");
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 1 1"), "Error: a user cannot be friends with themselves"));
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 1 9"), "Error: user 9 does not exist"));
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 1 x"), "Error: expected an integer"));
+    CHECK(contains(runCommand(cli, "ADD_FRIEND 1"), "Error: missing second user id"));
+    CHECK(contains(runCommand(cli, "ADD_USER 2"), "Error: user name cannot be empty"));
+    CHECK(contains(runCommand(cli, "ARE_FRIENDS 1 2 3"), "Error: too many arguments"));
+    CHECK(contains(runCommand(cli, "ADD_USER 12abc Bob"), "Error: expected an integer"));
+    CHECK(contains(runCommand(cli, "DANCE"), "Error: unknown command 'DANCE'"));
+}
+
+TEST_CASE(cli_remove_and_find_user) {
+    CommandProcessor cli;
+    runCommand(cli, "ADD_USER 1 Alice");
+    CHECK(contains(runCommand(cli, "FIND_USER 1"), "Alice(1), 0 friend(s)"));
+    CHECK(contains(runCommand(cli, "REMOVE_USER 1"), "Removed user Alice(1)"));
+    CHECK(contains(runCommand(cli, "FIND_USER 1"), "not found"));
+    CHECK(contains(runCommand(cli, "REMOVE_USER 1"), "does not exist"));
+}
+
+TEST_CASE(cli_exit_comments_and_blank_lines) {
+    CommandProcessor cli;
+    std::ostringstream out;
+    CHECK(cli.execute("", out));
+    CHECK(cli.execute("   ", out));
+    CHECK(cli.execute("# just a comment", out));
+    CHECK(out.str().empty());
+    CHECK(!cli.execute("EXIT", out));
+    CHECK(!cli.execute("quit", out));
+}
+
+TEST_CASE(cli_run_stops_at_exit) {
+    CommandProcessor cli;
+    std::istringstream in("ADD_USER 1 Alice\nEXIT\nADD_USER 2 Bob\n");
+    std::ostringstream out;
+    cli.run(in, out, /*echo=*/true, /*prompt=*/false);
+    CHECK(cli.graph().userCount() == 1);
+    CHECK(contains(out.str(), "> ADD_USER 1 Alice"));
+}

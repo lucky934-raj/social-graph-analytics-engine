@@ -17,4 +17,22 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# All graph code lives in one library so the CLI and the tests use exactly the
+# same compiled code.
+add_library(graph_core STATIC
+    src/SocialGraph.cpp
+    src/CommandProcessor.cpp
+)
+target_include_directories(graph_core PUBLIC include)
+
 add_executable(social_graph src/main.cpp)
+target_link_libraries(social_graph PRIVATE graph_core)
+
+enable_testing()
+add_executable(unit_tests
+    tests/test_main.cpp
+    tests/test_social_graph.cpp
+    tests/test_cli.cpp
+)
+target_link_libraries(unit_tests PRIVATE graph_core)
+add_test(NAME unit_tests COMMAND unit_tests)
