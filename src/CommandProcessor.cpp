@@ -77,6 +77,7 @@ const char* kHelpText =
     "  MUTUAL <a> <b>                list friends shared by two users\n"
     "  RECOMMEND <id> [k]            top-k friend suggestions by Jaccard similarity (k=5)\n"
     "  JACCARD <a> <b>               Jaccard similarity of two users' friend sets\n"
+    "  BFS <a> <b>                   shortest path by number of hops (BFS)\n"
     "  HELP                          show this message\n"
     "  EXIT                          quit\n";
 
@@ -198,15 +199,17 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
         if (k < 0) {
             throw std::invalid_argument("count must not be negative");
         }
-        auto recs = RecommendationEngine::recommendFriends(graph_, id, static_cast<std::size_t>(k));
+        auto recs = RecommendationEngine::recommendFriends(graph_, id,
+                                                           static_cast<std::size_t>(k));
         if (recs.empty()) {
             out << "No recommendations for " << label(id) << '\n';
         } else {
             out << "Recommendations for " << label(id) << ":\n";
             for (std::size_t i = 0; i < recs.size(); ++i) {
-                out << "  " << i + 1 << ". " << label(recs[i].userId) << "  jaccard="
-                    << formatDecimal(recs[i].jaccard()) << " (" << recs[i].mutualCount << " mutual / " << recs[i].unionSize
-                    << " in union)\n";
+                const Recommendation& r = recs[i];
+                out << "  " << i + 1 << ". " << label(r.userId)
+                    << "  jaccard=" << formatDecimal(r.jaccard()) << " (" << r.mutualCount
+                    << " mutual / " << r.unionSize << " in union)\n";
             }
         }
     } else if (command == "JACCARD") {
@@ -216,6 +219,12 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
         out << "Jaccard(" << label(a) << ", " << label(b)
             << ") = " << formatDecimal(RecommendationEngine::jaccardSimilarity(graph_, a, b))
             << '\n';
+    } else if (command == "BFS") {
+        int source = readInt(args, "source id");
+        int target = readInt(args, "target id");
+        expectNoMoreArgs(args);
+        printPath(GraphAlgorithms::bfsShortestPath(graph_, source, target), source, target,
+                  "Distance", out);
     } else if (command == "HELP") {
         out << kHelpText;
     } else {
@@ -234,6 +243,19 @@ std::string CommandProcessor::label(int id) const {
 void CommandProcessor::printUsers(const std::vector<int>& ids, std::ostream& out) const {
     for (int id : ids) {
         out << ' ' << label(id);
+    }
+    out << '\n';
+}
+
+void CommandProcessor::printPath(const PathResult& result, int source, int target,
+                                 const std::string& metric, std::ostream& out) const {
+    if (!result.found) {
+        out << "No path from " << label(source) << " to " << label(target) << '\n';
+        return;
+    }
+    out << metric << ": " << result.distance << "\nPath:";
+    for (std::size_t i = 0; i < result.path.size(); ++i) {
+        out << (i == 0 ? " " : " -> ") << label(result.path[i]);
     }
     out << '\n';
 }

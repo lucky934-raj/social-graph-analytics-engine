@@ -99,6 +99,21 @@ TEST_CASE(cli_recommend_and_jaccard) {
     CHECK(contains(runCommand(cli, "JACCARD 1 3"), "= 1.000"));
 }
 
+TEST_CASE(cli_bfs) {
+    CommandProcessor cli;
+    runCommand(cli, "ADD_USER 1 Alice");
+    runCommand(cli, "ADD_USER 2 Bob");
+    runCommand(cli, "ADD_USER 3 Charlie");
+    runCommand(cli, "ADD_USER 4 Dave");
+    runCommand(cli, "ADD_FRIEND 1 2");
+    runCommand(cli, "ADD_FRIEND 2 3");
+    std::string out = runCommand(cli, "BFS 1 3");
+    CHECK(contains(out, "Distance: 2"));
+    CHECK(contains(out, "Path: Alice(1) -> Bob(2) -> Charlie(3)"));
+    CHECK(contains(runCommand(cli, "BFS 1 4"), "No path from Alice(1) to Dave(4)"));
+    CHECK(contains(runCommand(cli, "BFS 1 5"), "Error: user 5 does not exist"));
+}
+
 TEST_CASE(cli_exit_comments_and_blank_lines) {
     CommandProcessor cli;
     std::ostringstream out;

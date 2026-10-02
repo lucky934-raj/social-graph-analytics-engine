@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GraphAlgorithms.h"
 #include "SocialGraph.h"
 
 #include <iosfwd>
@@ -24,6 +25,8 @@ private:
     void dispatch(const std::string& command, std::istringstream& args, std::ostream& out);
     std::string label(int id) const;
     void printUsers(const std::vector<int>& ids, std::ostream& out) const;
+    void printPath(const PathResult& result, int source, int target, const std::string& metric,
+                   std::ostream& out) const;
 
     SocialGraph graph_;
 };
