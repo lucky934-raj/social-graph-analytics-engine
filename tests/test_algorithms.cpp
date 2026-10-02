@@ -1,25 +1,8 @@
 #include "GraphAlgorithms.h"
 #include "TestFramework.h"
+#include "TestGraphs.h"
 
-#include <string>
-#include <utility>
 #include <vector>
-
-namespace {
-
-// Users 1..userCount named U1, U2, ..., plus the given friendships.
-SocialGraph makeGraph(int userCount, const std::vector<std::pair<int, int>>& edges) {
-    SocialGraph g;
-    for (int id = 1; id <= userCount; ++id) {
-        g.addUser(id, "U" + std::to_string(id));
-    }
-    for (const auto& e : edges) {
-        g.addFriendship(e.first, e.second);
-    }
-    return g;
-}
-
-}  // namespace
 
 // ---------- mutual friends ----------
 

@@ -1,9 +1,11 @@
 #include "CommandProcessor.h"
 
 #include "GraphAlgorithms.h"
+#include "RecommendationEngine.h"
 
 #include <algorithm>
 #include <cctype>
+#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -48,6 +50,14 @@ std::string readRestOfLine(std::istringstream& args) {
     return rest;
 }
 
+// Formats with a fixed number of decimals without changing the state of the
+// caller's output stream (std::fixed / setprecision are sticky).
+std::string formatDecimal(double value, int decimals = 3) {
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(decimals) << value;
+    return ss.str();
+}
+
 std::string toUpper(std::string s) {
     for (char& c : s) {
         c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
@@ -65,6 +75,8 @@ const char* kHelpText =
     "  ARE_FRIENDS <a> <b>           check whether two users are friends\n"
     "  FRIENDS <id>                  list a user's friends\n"
     "  MUTUAL <a> <b>                list friends shared by two users\n"
+    "  RECOMMEND <id> [k]            top-k friend suggestions by Jaccard similarity (k=5)\n"
+    "  JACCARD <a> <b>               Jaccard similarity of two users' friend sets\n"
     "  HELP                          show this message\n"
     "  EXIT                          quit\n";
 
@@ -179,6 +191,31 @@ void CommandProcessor::dispatch(const std::string& command, std::istringstream& 
         out << "Mutual friends of " << label(a) << " and " << label(b) << " (" << mutual.size()
             << "):";
         printUsers(mutual, out);
+    } else if (command == "RECOMMEND") {
+        int id = readInt(args, "user id");
+        int k = hasMoreArgs(args) ? readInt(args, "count") : 5;
+        expectNoMoreArgs(args);
+        if (k < 0) {
+            throw std::invalid_argument("count must not be negative");
+        }
+        auto recs = RecommendationEngine::recommendFriends(graph_, id, static_cast<std::size_t>(k));
+        if (recs.empty()) {
+            out << "No recommendations for " << label(id) << '\n';
+        } else {
+            out << "Recommendations for " << label(id) << ":\n";
+            for (std::size_t i = 0; i < recs.size(); ++i) {
+                out << "  " << i + 1 << ". " << label(recs[i].userId) << "  jaccard="
+                    << formatDecimal(recs[i].jaccard()) << " (" << recs[i].mutualCount << " mutual / " << recs[i].unionSize
+                    << " in union)\n";
+            }
+        }
+    } else if (command == "JACCARD") {
+        int a = readInt(args, "first user id");
+        int b = readInt(args, "second user id");
+        expectNoMoreArgs(args);
+        out << "Jaccard(" << label(a) << ", " << label(b)
+            << ") = " << formatDecimal(RecommendationEngine::jaccardSimilarity(graph_, a, b))
+            << '\n';
     } else if (command == "HELP") {
         out << kHelpText;
     } else {

@@ -84,6 +84,21 @@ TEST_CASE(cli_mutual_friends) {
     CHECK(contains(runCommand(cli, "MUTUAL 1 7"), "Error: user 7 does not exist"));
 }
 
+TEST_CASE(cli_recommend_and_jaccard) {
+    CommandProcessor cli;
+    runCommand(cli, "ADD_USER 1 Alice");
+    runCommand(cli, "ADD_USER 2 Bob");
+    runCommand(cli, "ADD_USER 3 Charlie");
+    runCommand(cli, "ADD_FRIEND 1 2");
+    runCommand(cli, "ADD_FRIEND 2 3");
+    std::string out = runCommand(cli, "RECOMMEND 1 5");
+    CHECK(contains(out, "Recommendations for Alice(1):"));
+    CHECK(contains(out, "1. Charlie(3)  jaccard=1.000 (1 mutual / 1 in union)"));
+    CHECK(contains(runCommand(cli, "RECOMMEND 2"), "No recommendations"));
+    CHECK(contains(runCommand(cli, "RECOMMEND 1 -1"), "Error: count must not be negative"));
+    CHECK(contains(runCommand(cli, "JACCARD 1 3"), "= 1.000"));
+}
+
 TEST_CASE(cli_exit_comments_and_blank_lines) {
     CommandProcessor cli;
     std::ostringstream out;
